@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<!--
+  "Add your data" page.
+
+  The owner picks one of two big tabs at the top:
+    Option A - upload a CSV file of transactions (the page cleans it and does
+               all the counting for them).
+    Option B - type the seven numbers by hand.
+
+  Returning the same page after a mistake keeps what was typed, so nothing is
+  lost. When the numbers are good the owner is sent to /results/<id>.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Add your data - Customer Segmentation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="site-header">
+      <div class="header-top">
+        <div class="titles">
+          <p class="eyebrow">Your own data</p>
+          <h1>Add your data</h1>
+          <p class="subtitle">
+            Upload a file of your sales, or type the numbers yourself.
+            Either way we show you what it means in plain words.
+          </p>
+        </div>
+
+        <div class="header-controls">
+          <a class="nav-link" href="{{ url_for('index') }}">View the results</a>
+          <a class="nav-link" href="{{ url_for('history') }}">Past entries</a>
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+            <span class="theme-icon" aria-hidden="true"></span>
+            <span id="theme-label">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    {% if message %}
+    <!-- Something went wrong. The message is always in plain words. -->
+    <div class="notice notice-error" role="alert">
+      <p>{{ message }}</p>
+      {% if report %}
+      <p class="notice-soft">
+        Read {{ "{:,}".format(report.rows_read) }} rows,
+        used {{ "{:,}".format(report.rows_used) }},
+        removed {{ "{:,}".format(report.rows_removed) }}.
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ===================== THE THREE OPTIONS ===================== -->
+    <div class="big-tabs" role="tablist" aria-label="How do you want to add your data?">
+      <button type="button" class="big-tab" data-tab="upload" role="tab"
+              aria-pressed="{{ 'false' if active_tab in ('typed', 'document') else 'true' }}">
+        <span class="big-tab-step">Option A</span>
+        <span class="big-tab-name">Upload a CSV file</span>
+        <span class="big-tab-hint">One row per item sold</span>
+      </button>
+      <button type="button" class="big-tab" data-tab="typed" role="tab"
+              aria-pressed="{{ 'true' if active_tab == 'typed' else 'false' }}">
+        <span class="big-tab-step">Option B</span>
+        <span class="big-tab-name">Type the numbers</span>
+        <span class="big-tab-hint">Seven boxes, one per group</span>
+      </button>
+      <button type="button" class="big-tab" data-tab="document" role="tab"
+              aria-pressed="{{ 'true' if active_tab == 'document' else 'false' }}">
+        <span class="big-tab-step">Option C</span>
+        <span class="big-tab-name">Upload a document</span>
+        <span class="big-tab-hint">We read the numbers for you</span>
+      </button>
+    </div>
+
+    <!-- ===================== OPTION A: UPLOAD ===================== -->
+    <section class="card tab-panel" data-panel="upload"
+             {% if active_tab in ('typed', 'document') %}hidden{% endif %}>
+      <h2 class="card-title">Upload a CSV file</h2>
+      <p class="card-sub">
+        A CSV file is a table saved as text. The file needs one row per item sold.
+      </p>
+
+      <form method="post" action="{{ url_for('upload') }}"
+            enctype="multipart/form-data" id="upload-form">
+        <!-- The big dashed box. It also accepts a file dragged onto it. -->
+        <label class="dropzone" id="dropzone" for="csv-file">
+          <span class="dropzone-icon" aria-hidden="true">&#8681;</span>
+          <span class="dropzone-title">Drag your file here</span>
+          <span class="dropzone-or">or</span>
+          <span class="btn btn-primary dropzone-button">Choose file</span>
+          <span class="dropzone-file" id="dropzone-file" hidden></span>
+        </label>
+        <input
+          type="file"
+          id="csv-file"
+          name="csv_file"
+          accept=".csv,text/csv"
+          class="visually-hidden"
+        />
+
+        <p class="field-hint" id="upload-name">No file chosen yet.</p>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="upload-btn" disabled>
+            Upload and work it out
+          </button>
+          <a class="btn btn-ghost" href="{{ url_for('sample_csv') }}">Download sample file</a>
+          <button type="button" class="btn btn-ghost" id="upload-reset">Reset</button>
+        </div>
+      </form>
+
+      <div class="notice notice-soft-box">
+        <p><strong>What the file needs:</strong></p>
+        <ul class="plain-list">
+          <li>a customer ID column</li>
+          <li>an invoice or order number column</li>
+          <li>a date column</li>
+          <li>a quantity column</li>
+          <li>a price column</li>
+        </ul>
+        <p class="notice-soft">
+          Common other names are understood too, such as "Customer ID",
+          "InvoiceDate" and "Price". Only CSV files up to 20 MB.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===================== OPTION B: TYPED ===================== -->
+    <section class="card tab-panel" data-panel="typed"
+             {% if active_tab != 'typed' %}hidden{% endif %}>
+      {% if from_document %}
+      <div class="notice notice-soft-box" role="status">
+        <p><strong>I read these numbers from {{ from_document | e }}.</strong>
+           Please check them, then save.</p>
+        {% if missing %}
+        <p>I could not find a number for:
+          {{ missing | join(', ') }}. Fill those in yourself.</p>
+        {% endif %}
+        {% if unknown_lines %}
+        <p>I did not understand these lines:</p>
+        <ul class="plain-list">
+          {% for line in unknown_lines %}<li><code>{{ line }}</code></li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endif %}
+      <h2 class="card-title">Type the numbers</h2>
+      <p class="card-sub">Every box takes whole numbers only. Zero is fine.</p>
+
+      <div class="toggle tabs" role="tablist" aria-label="How do you want to type them?">
+        <button type="button" class="toggle-btn tab-btn" data-inner-tab="form"
+                role="tab" aria-pressed="true">Type each number</button>
+        <button type="button" class="toggle-btn tab-btn" data-inner-tab="list"
+                role="tab" aria-pressed="false">Type a list</button>
+      </div>
+
+      <form method="post" action="{{ url_for('typed') }}" id="typed-form" novalidate>
+        <input type="hidden" name="tab" id="typed-tab" value="form" />
+
+        <div class="inner-panel" data-inner-panel="form">
+          <div class="field-grid">
+            {% for key, label, hint in fields %}
+            <div class="field">
+              <label class="field-label" for="input-{{ key }}">{{ label }}</label>
+              <input
+                class="field-input {% if errors.get(key) %}has-error{% endif %}"
+                type="number" inputmode="numeric" min="0" step="1"
+                id="input-{{ key }}" name="{{ key }}"
+                value="{{ values.get(key, '') }}" data-key="{{ key }}"
+                {% if errors.get(key) %}aria-invalid="true" aria-describedby="error-{{ key }}"{% endif %}
+              />
+              <p class="field-hint">{{ hint }}</p>
+              <p class="field-error" id="error-{{ key }}"
+                 {% if not errors.get(key) %}hidden{% endif %}>{{ errors.get(key, '') }}</p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="inner-panel" data-inner-panel="list" hidden>
+          <label class="field-label" for="typed-list">Type one item on each line</label>
+          <p class="field-hint">
+            Write the name, then a colon, then the number. Like this:
+            <code>Most buyers: 233</code>
+          </p>
+          <textarea class="field-input list-input" id="typed-list" name="typed_list"
+                    rows="8" spellcheck="false"
+                    placeholder="Most buyers: 233&#10;Regular buyers: 433&#10;Least buyers: 334&#10;Total buyers: 1000">{{ typed_lines if typed_lines is defined else '' }}</textarea>
+
+          {% if unknown_lines %}
+          <div class="notice notice-error" role="alert">
+            {% for line in unknown_lines %}
+            <p>I did not understand this line: <code>{{ line }}</code></p>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        {% if warnings %}
+        <div class="notice notice-warn" role="alert">
+          {% for warning in warnings %}<p>{{ warning }}</p>{% endfor %}
+          <p class="notice-soft">You can still save if you are sure.</p>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="save-btn" disabled>Save</button>
+          <button type="button" class="btn btn-ghost" id="reset-btn">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================== OPTION C: DOCUMENT ===================== -->
+    <section class="card tab-panel" data-panel="document"
+             {% if active_tab != 'document' %}hidden{% endif %}>
+      <h2 class="card-title">Upload a document</h2>
+      <p class="card-sub">
+        A Word file, a PDF or a text file with the numbers written in it.
+        I read the numbers out and put them in the boxes for you to check.
+      </p>
+
+      <form method="post" action="{{ url_for('document') }}"
+            enctype="multipart/form-data" id="document-form">
+        <label class="dropzone" id="document-drop" for="document-file">
+          <input type="file" id="document-file" name="document"
+                 accept=".docx,.pdf,.txt,.md" />
+          <span class="dropzone-icon" aria-hidden="true">+</span>
+          <span class="dropzone-title">Choose a document</span>
+          <span class="dropzone-sub">or drag it here. Word, PDF or text, up to 20 MB.</span>
+          <span class="dropzone-file" id="document-file-name"></span>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="document-btn" disabled>
+            Read the numbers
+          </button>
+          <button type="button" class="btn btn-ghost" id="document-reset">Reset</button>
+        </div>
+      </form>
+
+      <div class="notice notice-soft-box">
+        <p><strong>What the document needs:</strong></p>
+        <ul class="plain-list">
+          <li>the name of each group</li>
+          <li>its number, either on the same line or the line below</li>
+        </ul>
+        <p class="notice-soft">
+          Like this: "Most buyers: 233". Tables and paragraphs both work.
+        </p>
+      </div>
+    </section>
+
+    <!-- Shown over the page while a file is being worked out -->
+    <div class="spinner-overlay" id="spinner" hidden role="status" aria-live="polite">
+      <div class="spinner-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="spinner-text">Working on your numbers...</p>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      Your data stays on this computer. Uploaded files are not kept.
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='add_data.js') }}"></script>
+  <script src="{{ url_for('static', filename='document.js') }}"></script>
+</body>
+</html>

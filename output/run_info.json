@@ -1,0 +1,5 @@
+{
+  "source": "synthetic",
+  "data": "data/transactions.csv",
+  "k": 2
+}

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<!--
+  Results page.
+
+  Shows one saved run: the result cards, the pie chart, the bar chart, the
+  three plain sentences, and (for an uploaded file) the segments and the
+  cleaning report. It reads exactly the same for both options.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your results - Customer Segmentation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="site-header">
+      <div class="header-top">
+        <div class="titles">
+          <p class="eyebrow">{{ run.source }} &middot; {{ run.saved_at }}</p>
+          <h1>Your results</h1>
+          <p class="subtitle">
+            From {{ run.title }}. Everything below comes straight from your numbers.
+          </p>
+        </div>
+
+        <div class="header-controls">
+          <a class="nav-link" href="{{ url_for('add_data') }}">Add more data</a>
+          <a class="nav-link" href="{{ url_for('history') }}">Past entries</a>
+          <a class="nav-link" href="{{ url_for('index') }}">View the results</a>
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+            <span class="theme-icon" aria-hidden="true"></span>
+            <span id="theme-label">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    {% if result.warnings %}
+    <div class="notice notice-warn" role="alert">
+      {% for warning in result.warnings %}<p>{{ warning }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ===================== WHAT HAPPENED TO THE FILE ===================== -->
+    {% if result.report %}
+    <section class="card">
+      <h2 class="card-title">What we did with your file</h2>
+      <p class="report-line">{{ result.summary_line }}</p>
+
+      <div class="table-wrap">
+        <table class="data-table report-table">
+          <thead>
+            <tr><th scope="col">Reason a row was removed</th><th scope="col" class="num">Rows</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>No customer ID</td>
+              <td class="num">{{ "{:,}".format(result.report.no_customer_id) }}</td>
+            </tr>
+            <tr>
+              <td>Returns (quantity below 1)</td>
+              <td class="num">{{ "{:,}".format(result.report.returns) }}</td>
+            </tr>
+            <tr>
+              <td>Price of 0 or less</td>
+              <td class="num">{{ "{:,}".format(result.report.bad_price) }}</td>
+            </tr>
+            <tr>
+              <td>Unreadable date</td>
+              <td class="num">{{ "{:,}".format(result.report.bad_date) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ===================== RESULT CARDS ===================== -->
+    {% set tints = {
+      'total': '--seg-champions',
+      'most': '--seg-champions-2',
+      'regular': '--seg-loyal',
+      'least': '--seg-hibernating-2',
+      'frequent': '--seg-fallback',
+      'last_month': '--seg-hibernating',
+      'big_spenders': '--seg-fallback-2',
+      'not_last_month': '--seg-fallback-3',
+      'revenue': '--accent'
+    } %}
+    <section class="results" aria-label="Your results">
+      <div class="result-cards">
+        {% for card in result.cards %}
+        <article class="card mini-stat"
+                 style="--card-tint: var({{ tints.get(card.key, '--seg-fallback') }});">
+          <p class="mini-stat-label">{{ card.label }}</p>
+          {% if card.key == 'revenue' %}
+          <p class="mini-stat-value">&pound;{{ "{:,.0f}".format(card.number) }}</p>
+          <p class="mini-stat-sub">Money taken from all the rows we used</p>
+          {% else %}
+          <p class="mini-stat-value">{{ "{:,}".format(card.number) }}</p>
+          <p class="mini-stat-sub">
+            {% if card.percent is not none %}
+              {{ "{:,}".format(card.number) }} out of {{ "{:,}".format(result.numbers.total) }} buyers
+              ({{ card.percent }}%)
+            {% else %}
+              out of {{ "{:,}".format(result.numbers.total) }} buyers in total
+            {% endif %}
+          </p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+
+      <!-- ===================== CHARTS ===================== -->
+      <div class="grid-2">
+        <article class="card">
+          <h2 class="card-title">How buyers are spread</h2>
+          <p class="card-sub">Most, Regular and Least buyers, out of the total</p>
+          <div class="chart-box chart-box--pie">
+            <canvas id="chart-entry-pie" role="img"
+                    aria-label="Pie chart of Most, Regular and Least buyers"></canvas>
+          </div>
+          <p class="how-to-read">
+            <span class="how-label">How to read this</span>
+            Each slice is one group. A big slice means many buyers are in that group.
+          </p>
+        </article>
+
+        <article class="card">
+          <h2 class="card-title">All your numbers</h2>
+          <p class="card-sub">Every number we worked out, side by side</p>
+          <div class="chart-box chart-box--bar-tall">
+            <canvas id="chart-entry-bar" role="img"
+                    aria-label="Bar chart of every number worked out"></canvas>
+          </div>
+          <p class="how-to-read">
+            <span class="how-label">How to read this</span>
+            Each bar is one number. A longer bar means a bigger number.
+          </p>
+        </article>
+      </div>
+
+      <!-- ===================== SENTENCES ===================== -->
+      <article class="card">
+        <h2 class="card-title">What this means</h2>
+        <ul class="sentence-list">
+          {% for sentence in result.sentences %}<li>{{ sentence }}</li>{% endfor %}
+        </ul>
+      </article>
+
+      <!-- ===================== SEGMENTS (uploaded files only) ===================== -->
+      {% if result.segments %}
+      <article class="card">
+        <h2 class="card-title">Your buyer groups</h2>
+        {% if result.segments.available %}
+        <p class="card-sub">
+          We grouped your buyers by how recently they bought, how often, and how much.
+        </p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Group</th>
+                <th scope="col" class="num">Buyers</th>
+                <th scope="col" class="num">Days since last order</th>
+                <th scope="col" class="num">Orders each</th>
+                <th scope="col" class="num">Spend each</th>
+                <th scope="col" class="num">Share of spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for segment in result.segments.segments %}
+              <tr>
+                <td><span class="badge">{{ segment.segment }}</span></td>
+                <td class="num">{{ "{:,}".format(segment.customers) }}</td>
+                <td class="num">{{ segment.recency }}</td>
+                <td class="num">{{ segment.frequency }}</td>
+                <td class="num">&pound;{{ "{:,.2f}".format(segment.monetary) }}</td>
+                <td class="num">{{ segment.revenue_share }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-note">{{ result.segments.message }}</p>
+        {% endif %}
+      </article>
+      {% endif %}
+    </section>
+
+    <script type="application/json" id="entry-data">{{ result_json | safe }}</script>
+
+    <footer class="site-footer">
+      Saved on {{ run.saved_at }}. Data is kept on this computer only.
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='enter.js') }}"></script>
+</body>
+</html>

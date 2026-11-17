@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!--
+  Customer Segmentation Dashboard - page structure.
+
+  The page is deliberately "thin": it contains only markup. All data comes from
+  /api/data (see dashboard/app.py) and all drawing logic lives in static/app.js.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Customer Segmentation Dashboard</title>
+
+  <!-- Inter is optional: if it fails to load we fall back to system-ui -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+
+  <!-- Chart.js from cdnjs (as requested). Loaded before app.js. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- ================= HEADER: title + k toggle + dark mode ================= -->
+    <header class="site-header">
+      <div class="header-top">
+        <div class="titles">
+          <p class="eyebrow">RFM + K-Means</p>
+          <h1>Customer Segmentation</h1>
+          <p class="subtitle" id="result-note">Loading results&hellip;</p>
+        </div>
+
+        <div class="header-controls">
+          <!-- The k toggle. Buttons are rendered server-side from RESULT_SETS -->
+          <div class="toggle" role="group" aria-label="Choose result set">
+            {% for rs in result_sets %}
+            <button
+              type="button"
+              class="toggle-btn"
+              data-result-id="{{ rs.id }}"
+              aria-pressed="false"
+            >
+              {{ rs.label }}
+            </button>
+            {% endfor %}
+          </div>
+
+          <!-- Link to the page where the owner types their own numbers -->
+          <a class="nav-link" href="{{ url_for('enter_numbers') }}">Enter your numbers</a>
+
+          <!-- Dark mode toggle -->
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+            <span class="theme-icon" aria-hidden="true"></span>
+            <span id="theme-label">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Shown only when a result folder has not been generated yet -->
+    <div id="missing-banner" class="banner" hidden></div>
+
+    <main id="content">
+
+      <!-- ================= SUMMARY CARDS ================= -->
+      <section class="cards" aria-label="Summary">
+        <article class="card stat">
+          <p class="stat-label">Total buyers</p>
+          <p class="stat-value" id="stat-customers">&mdash;</p>
+          <p class="stat-hint">One row for each buyer</p>
+        </article>
+
+        <article class="card stat">
+          <p class="stat-label">Total spend</p>
+          <p class="stat-value" id="stat-revenue">&mdash;</p>
+          <p class="stat-hint">All money spent, returns removed</p>
+        </article>
+
+        <article class="card stat">
+          <p class="stat-label">Segments</p>
+          <p class="stat-value" id="stat-segments">&mdash;</p>
+          <p class="stat-hint">Groups made by k-means</p>
+        </article>
+
+        <article class="card stat">
+          <p class="stat-label">Top segment spend share</p>
+          <p class="stat-value" id="stat-top-share">&mdash;</p>
+          <p class="stat-hint" id="stat-top-name">&nbsp;</p>
+        </article>
+      </section>
+
+      <!-- Plain-English glossary, shown once near the top -->
+      <section class="card glossary" aria-label="What the words mean">
+        <h2 class="card-title">Words used on this page</h2>
+        <ul class="glossary-list">
+          <li>
+            <strong>Recency (days since last purchase):</strong> how long ago the buyer
+            last ordered. A small number is good.
+          </li>
+          <li>
+            <strong>Frequency (number of orders):</strong> how many separate orders
+            the buyer placed. A big number is good.
+          </li>
+          <li>
+            <strong>Spend (total money paid):</strong> how much the buyer paid in
+            total. A big number is good.
+          </li>
+          <li>
+            <strong>Segment:</strong> a group of buyers who behave in a similar way.
+          </li>
+          <li>
+            <strong>Share:</strong> one part of the whole, shown as a percentage.
+          </li>
+          <li>
+            <strong>Average:</strong> the total split evenly across the group.
+          </li>
+        </ul>
+      </section>
+
+      <!-- ================= PIE CHARTS ================= -->
+      <section class="grid-2" aria-label="Share of buyers and spend">
+        <article class="card">
+          <h2 class="card-title">Share of buyers</h2>
+          <p class="card-sub">How many buyers are in each segment</p>
+          <div class="chart-box chart-box--pie">
+            <canvas id="chart-customers" role="img" aria-label="Pie chart showing the share of buyers per segment"></canvas>
+          </div>
+          <p class="how-to-read">
+            <span class="how-label">How to read this</span>
+            Each slice is one segment. A big slice means many buyers are in that group.
+          </p>
+        </article>
+
+        <article class="card">
+          <h2 class="card-title">Share of spend</h2>
+          <p class="card-sub">Where the money comes from</p>
+          <div class="chart-box chart-box--pie">
+            <canvas id="chart-revenue" role="img" aria-label="Pie chart showing the share of spend per segment"></canvas>
+          </div>
+          <p class="how-to-read">
+            <span class="how-label">How to read this</span>
+            Each slice is one segment. A big slice means that group paid most of the money.
+          </p>
+        </article>
+      </section>
+
+      <!-- ================= BAR CHARTS (small multiples) ================= -->
+      <section class="card" aria-label="Average RFM values per segment">
+        <h2 class="card-title">Average RFM value by segment</h2>
+        <p class="card-sub">
+          Three charts, because days, orders and money use different scales
+        </p>
+
+        <div class="grid-3">
+          <div class="mini-chart">
+            <h3 class="mini-title">Recency <span class="mini-unit">average days since last purchase</span></h3>
+            <div class="chart-box chart-box--bar">
+              <canvas id="chart-recency" role="img" aria-label="Bar chart of average recency in days per segment"></canvas>
+            </div>
+          </div>
+
+          <div class="mini-chart">
+            <h3 class="mini-title">Frequency <span class="mini-unit">average number of orders</span></h3>
+            <div class="chart-box chart-box--bar">
+              <canvas id="chart-frequency" role="img" aria-label="Bar chart of average number of orders per segment"></canvas>
+            </div>
+          </div>
+
+          <div class="mini-chart">
+            <h3 class="mini-title">Spend <span class="mini-unit">average spend per buyer</span></h3>
+            <div class="chart-box chart-box--bar">
+              <canvas id="chart-monetary" role="img" aria-label="Bar chart of average spend per segment"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <p class="how-to-read">
+          <span class="how-label">How to read this</span>
+          A short recency bar is good. Tall frequency and spend bars are good too.
+        </p>
+      </section>
+
+      <!-- ================= SEGMENT TABLE ================= -->
+      <section class="card" aria-label="Segment profile table">
+        <h2 class="card-title">Segment table</h2>
+        <p class="card-sub">Full results for the selected run</p>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Segment</th>
+                <th scope="col" class="num">Buyers</th>
+                <th scope="col" class="num">% of buyers</th>
+                <th scope="col" class="num">Recency (days)</th>
+                <th scope="col" class="num">Frequency (orders)</th>
+                <th scope="col" class="num">Spend</th>
+                <th scope="col" class="num">Spend share</th>
+              </tr>
+            </thead>
+            <tbody id="segment-table-body">
+              <!-- rows injected by app.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <p class="how-to-read">
+          <span class="how-label">How to read this</span>
+          Each row is one segment. Compare the numbers to see how each group differs.
+        </p>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      Data is synthetic (generated by src/generate_data.py).
+    </footer>
+
+  </div>
+
+  <!-- Result-set metadata (label + how it was chosen) passed from Flask to JS
+       as JSON, so app.js can write "Showing k = 4 — forced with --k 4". -->
+  <script type="application/json" id="result-meta">{{ result_sets|tojson }}</script>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

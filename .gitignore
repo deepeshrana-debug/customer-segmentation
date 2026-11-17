@@ -1,0 +1,16 @@
+venv/
+.venv/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+.DS_Store
+
+dashboard/entries.db
+
+scratch_check/
+
+data/online_retail_II.xlsx
+
+.ipynb_checkpoints/

@@ -1,0 +1,1196 @@
+/* ==========================================================================
+   Customer Segmentation Dashboard - styles
+
+   Design notes
+   ------------
+   * 12px rounded corners, subtle borders + soft shadows, no gradients.
+   * Restrained palette: one accent colour per segment, dark slate text.
+   * Every colour used for text on a background meets WCAG AA (>= 4.5:1)
+     in both light and dark mode.
+   * Numbers use tabular figures so table columns line up vertically.
+   ========================================================================== */
+
+/* ------------------------------ Design tokens ---------------------------- */
+/* Light mode (default). Every colour below is a variable, so changing one
+   value here updates the whole app.
+   Contrast of every text colour against its own background is noted inline;
+   all meet WCAG AA (at least 4.5:1). */
+:root {
+  /* Surfaces */
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;     /* soft tint for table heads and notes */
+  --border: #cbd5e1;
+
+  /* Text - checked against --surface (#ffffff) and --surface-2 (#f1f5f9) */
+  --text: #1e293b;          /* 14.6:1 on white, 13.4:1 on #f1f5f9 */
+  --text-muted: #475569;    /* 7.6:1 on white, 6.9:1 on #f1f5f9  */
+  --text-faint: #475569;    /* same as muted: still AA on every surface */
+
+  /* Segment colours, light mode. Used for chart fills, legend dots and
+     badge backgrounds. White badge text on each of these measures at least
+     4.5:1 (Champions 5.0:1, Loyal 5.5:1, Champions 2 6.7:1, Hibernating 2
+     5.0:1, Hibernating 5.9:1). */
+  --seg-champions: #15803d;
+  --seg-loyal: #0f766e;
+  --seg-champions-2: #1d4ed8;
+  --seg-hibernating-2: #b45309;
+  --seg-hibernating: #b91c1c;
+  --seg-fallback: #475569;   /* any segment name we do not have a colour for */
+  --seg-fallback-2: #6d28d9;
+  --seg-fallback-3: #334155;
+
+  /* Accent for UI chrome (focused toggle, focus rings) */
+  --accent: #1d4ed8;        /* 6.7:1 on white as text */
+  --accent-soft: #eff6ff;
+
+  /* Chart colours - read by app.js via getComputedStyle, so charts follow
+     the theme automatically. */
+  --chart-text: #475569;    /* axis labels: 7.6:1 on white */
+  --chart-text-strong: #1e293b;  /* legend names: 14.6:1 on white */
+  --chart-grid: rgba(71, 85, 105, 0.16);
+  --chart-slice-border: #ffffff;  /* gap between pie slices */
+  --chart-slice-label: #ffffff;   /* the number written on a slice */
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f1f5f9;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --shadow-hover: 0 2px 4px rgba(15, 23, 42, 0.06), 0 8px 20px rgba(15, 23, 42, 0.08);
+  --radius: 12px;
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Dark mode. Same variable names, different values - nothing else changes. */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #263449;     /* softly lifted tint for table heads and notes */
+  --border: #334155;
+
+  /* Text - checked against --surface (#1e293b) and --surface-2 (#263449) */
+  --text: #f1f5f9;          /* 13.7:1 on #1e293b, 11.8:1 on #263449 */
+  --text-muted: #cbd5e1;    /* 9.5:1 on #1e293b, 8.2:1 on #263449 */
+  --text-faint: #cbd5e1;    /* same as muted: still AA on every surface */
+
+  /* Segment colours, dark mode. Lighter so they read on a dark card, and
+     dark badge text is used on them (handled in .badge below). */
+  --seg-champions: #4ade80;
+  --seg-loyal: #2dd4bf;
+  --seg-champions-2: #60a5fa;
+  --seg-hibernating-2: #fbbf24;
+  --seg-hibernating: #f87171;
+  --seg-fallback: #94a3b8;
+  --seg-fallback-2: #a78bfa;
+  --seg-fallback-3: #cbd5e1;
+
+  --accent: #60a5fa;
+  --accent-soft: #1e3a5f;
+
+  --chart-text: #cbd5e1;    /* 9.5:1 on #1e293b */
+  --chart-text-strong: #f1f5f9;  /* 13.7:1 on #1e293b */
+  --chart-grid: rgba(203, 213, 225, 0.18);
+  --chart-slice-border: #1e293b;  /* matches the card, so slices stay separated */
+  --chart-slice-label: #ffffff;   /* the number written on a slice */
+  --chart-tooltip-bg: #f1f5f9;
+  --chart-tooltip-text: #0f172a;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* -------------------------------- Base ---------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  /* 16px minimum for body text, per the readability rule */
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  /* Smooth, not flashy, when switching to dark mode */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+/* Tabular numerals everywhere numbers appear in a column */
+.stat-value,
+.data-table td.num,
+.axis-tick,
+canvas {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ------------------------------- Header --------------------------------- */
+.site-header {
+  margin-bottom: 24px;
+}
+
+.header-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Headings sit between 20px and 32px and are bold. */
+h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------ k toggle ------------------------------- */
+.toggle {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.toggle-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toggle-btn:hover {
+  color: var(--text);
+}
+
+/* Selected state: white pill on the tinted track */
+.toggle-btn[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+
+/* --------------------------- Theme toggle ------------------------------- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--text-faint);
+}
+
+/* The little moon/sun dot is drawn with CSS so no icon font is needed */
+.theme-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: inset -4px -4px 0 0 var(--surface);
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+[data-theme="dark"] .theme-icon {
+  background: #f0c04a;
+  box-shadow: none;
+}
+
+/* Focus rings: visible for keyboard users on every interactive control */
+.toggle-btn:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------ Banner ---------------------------------- */
+.banner {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.banner code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  background: rgba(128, 128, 128, 0.14);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ------------------------------- Cards ---------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.18s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Summary cards: 4 across on desktop, stacking on narrow screens */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  padding: 20px 22px;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The headline numbers: large, bold, tabular */
+/* Summary card numbers: 32-40px and bold, per the type scale. */
+.stat-value {
+  margin: 10px 0 6px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.stat-hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------ Layout ---------------------------------- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 8px;
+}
+
+main > .card + .card,
+main > section + section {
+  margin-bottom: 16px;
+}
+
+/* ------------------------------ Headings -------------------------------- */
+.card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card-sub {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.mini-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mini-unit {
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ------------------------------- Charts --------------------------------- */
+/* A fixed-height box with position:relative is the reliable way to make
+   Chart.js responsive: the canvas fills the box and redraws on resize. */
+.chart-box {
+  position: relative;
+  width: 100%;
+}
+
+.chart-box--pie {
+  height: 300px;
+  margin-top: 16px;
+}
+
+.chart-box--bar {
+  height: 260px;
+}
+
+.mini-chart {
+  min-width: 0; /* lets the canvas shrink inside a grid column */
+}
+
+/* ------------------------------ Glossary -------------------------------- */
+/* A short plain-English list of the words used on the page. Two columns on
+   wide screens, one on phones. */
+.glossary {
+  margin-bottom: 16px;
+}
+
+.glossary-list {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 28px;
+}
+
+.glossary-list li {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
+}
+
+/* The term itself stays in the main text colour so it stands out from the
+   explanation, which is muted. */
+.glossary-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* --------------------------- "How to read" ------------------------------ */
+.how-to-read {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.how-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ------------------------------- Table ---------------------------------- */
+.table-wrap {
+  margin-top: 18px;
+  overflow-x: auto;      /* horizontal scroll on phones instead of squashing */
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  min-width: 640px;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+/* Right-align every numeric column so digits line up on the decimal point */
+.data-table th.num,
+.data-table td.num {
+  text-align: right;
+}
+
+/* Bigger number for the headline column of each row */
+.data-table td.num.strong {
+  font-weight: 600;
+}
+
+/* ------------------------------- Badges --------------------------------- */
+/* The segment name as a coloured pill. --badge is set inline per row. */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--badge, var(--seg-fallback));
+  /* White text on the darker light-mode colours. Dark mode flips this to
+     near-black below, because those segment colours are much lighter. */
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Dark-mode badges use the light segment colours (#4ADE80 and friends), so
+   the text turns near-black: at least 7:1 on each of them. */
+[data-theme="dark"] .badge {
+  color: #0f172a;
+}
+
+/* ------------------------------- Footer --------------------------------- */
+.site-footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ----------------------------- Tall bar --------------------------------- */
+/* The "all your numbers" chart has seven bars, so it needs more height. */
+.chart-box--bar-tall {
+  height: 380px;
+  margin-top: 16px;
+}
+
+/* ------------------------------ Nav links ------------------------------- */
+/* Plain links in the header, next to the light/dark switch. */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.nav-link:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.nav-link:focus-visible {
+  outline: 3px solid var(--seg-champions);
+  outline-offset: 2px;
+}
+
+/* ------------------------------- Tabs ----------------------------------- */
+.tabs {
+  margin: 18px 0 4px;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+/* ------------------------------- Fields --------------------------------- */
+/* One column on phones, two on wide screens. Labels always sit above the
+   box, so they never disappear while the owner is typing. */
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin-top: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 18px;
+}
+
+.field-grid .field-label {
+  margin-top: 0;
+}
+
+/* Every box is at least 44px tall so it is easy to tap. */
+.field-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.field-input:focus-visible {
+  outline: 3px solid var(--seg-champions);
+  outline-offset: 1px;
+  border-color: var(--seg-champions);
+}
+
+.has-error,
+.field-input.has-error {
+  border-color: #b91c1c;
+}
+
+[data-theme="dark"] .has-error,
+[data-theme="dark"] .field-input.has-error {
+  border-color: #fca5a5;
+}
+
+.list-input {
+  min-height: 200px;
+  margin-top: 10px;
+  resize: vertical;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* A short line under a box saying what to type. */
+.field-hint {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.field-hint code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.field-error {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .field-error {
+  color: #fca5a5;
+}
+
+.field-error[hidden] {
+  display: none;
+}
+
+/* ------------------------------ Notices --------------------------------- */
+.notice {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice p + p {
+  margin-top: 6px;
+}
+
+.notice-error {
+  border-left-color: #b91c1c;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+[data-theme="dark"] .notice-error {
+  border-left-color: #fca5a5;
+  background: rgba(185, 28, 28, 0.16);
+  color: #fecaca;
+}
+
+.notice-warn {
+  border-left-color: #b45309;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+[data-theme="dark"] .notice-warn {
+  border-left-color: #fbbf24;
+  background: rgba(180, 83, 9, 0.18);
+  color: #fde68a;
+}
+
+/* A quieter line at the bottom of a notice. */
+.notice-soft {
+  font-size: 13.5px;
+  opacity: 0.85;
+}
+
+/* ------------------------------ Buttons --------------------------------- */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  font-family: inherit;
+  font-size: 15.5px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--surface-2);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--seg-champions);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--seg-champions);
+  border-color: var(--seg-champions);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--seg-champions);
+  filter: brightness(1.08);
+}
+
+[data-theme="dark"] .btn-primary {
+  color: #0f172a;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.row-actions form {
+  margin: 0;
+}
+
+/* --------------------------- Result cards -------------------------------- */
+.result-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Each card is tinted with its own soft colour, set inline by the template
+   as --card-tint. The big number is the first thing the eye lands on. */
+.mini-stat {
+  border-top: 4px solid var(--card-tint, var(--seg-fallback));
+  background: color-mix(in srgb, var(--card-tint, var(--seg-fallback)) 7%, var(--surface));
+}
+
+.mini-stat-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+}
+
+.mini-stat-value {
+  margin: 6px 0 4px;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.mini-stat-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---------------------------- Sentences ---------------------------------- */
+.sentence-list {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sentence-list li {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.empty-note {
+  margin: 14px 0 0;
+  font-size: 15.5px;
+  color: var(--text-muted);
+}
+
+/* ----------------------------- Add your data ---------------------------- */
+/* Three large tabs at the top of the page. They are big on purpose: easy to
+   tap on a phone, and it is obvious there are three choices. */
+.big-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.big-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 104px;
+  padding: 18px 20px;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.big-tab:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.big-tab[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.big-tab:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.big-tab-step {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.big-tab-name {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.big-tab-hint {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ------------------------------ Drop zone ------------------------------- */
+/* A large dashed box. It changes colour while a file is dragged over it. */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 190px;
+  margin-top: 18px;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface-2);
+  border: 2.5px dashed var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  border-color: var(--accent);
+}
+
+/* The colour change the brief asks for */
+.dropzone.is-dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropzone-icon {
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.dropzone-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dropzone-or {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.dropzone-sub {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.dropzone-file {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* The real file box is hidden, but still works with a screen reader. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A quiet box for short lists of instructions */
+.notice-soft-box {
+  border-left-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.plain-list {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+/* The line above the cleaning table: "58,271 rows read. ..." */
+.report-line {
+  margin: 12px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.report-table td {
+  font-size: 14.5px;
+}
+
+/* ------------------------------- Spinner -------------------------------- */
+/* Covers the page while the server works, so nothing looks broken. */
+.spinner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.spinner-overlay[hidden] {
+  display: none;
+}
+
+.spinner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 34px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-text {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ---------------------------- Responsive -------------------------------- */
+@media (max-width: 760px) {
+  /* The big tabs stack, so each one stays easy to tap */
+  .big-tabs {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .big-tab {
+    min-height: 88px;
+  }
+
+  .big-tab-name {
+    font-size: 17px;
+  }
+
+  .dropzone {
+    min-height: 150px;
+  }
+}
+
+/* ---------------------------- Responsive -------------------------------- */
+@media (max-width: 1000px) {
+  .chart-box--bar-tall {
+    height: 320px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .chart-box--bar {
+    height: 220px;
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 20px 16px 36px;
+  }
+
+  /* One column for the glossary so nothing gets squeezed */
+  .glossary-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+
+  /* Charts side by side is unreadable on a phone: stack them */
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .header-top {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stat-value {
+    font-size: 30px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .chart-box--pie {
+    height: 260px;
+  }
+
+  /* One box per row on a phone, so nothing is squeezed */
+  .field-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .mini-stat-value {
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 420px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .toggle-btn {
+    padding: 7px 12px;
+  }
+}
+
+/* Respect the OS "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* ------------------------------ Print ----------------------------------- */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .header-controls {
+    display: none;
+  }
+
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

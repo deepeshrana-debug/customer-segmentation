@@ -1,0 +1,3 @@
+segment,customers,assumed_win_back_rate,assumed_returned_customers,assumed_order_value,assumed_orders_per_year,assumption_based_extra_revenue,offer_cost,assumption_based_net_gain,figures_are
+Hibernating,416,0.2,83.2,3127.35,2.0,520391.04,2080.0,518311.04,assumption-based
+Champions,584,0.0,0.0,3127.35,2.0,0.0,0.0,0.0,assumption-based

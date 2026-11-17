@@ -1,0 +1,7 @@
+{
+  "_comment": "These are ASSUMPTIONS, not results from the data. Change them to see how the numbers move. Every output file says so too.",
+  "win_back_rate": 0.20,
+  "offer_cost_per_customer": 5.0,
+  "average_order_value": null,
+  "orders_per_year_if_returned": 2
+}

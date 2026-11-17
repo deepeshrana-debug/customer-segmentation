@@ -1,0 +1,5 @@
+cluster,segment,customers,recency,frequency,monetary,revenue_share_%
+0,Champions,255,23.5,35.6,12802.8,90.2
+2,Champions 2,292,28.3,20.5,767.6,6.2
+3,Hibernating 2,229,129.1,4.6,510.4,3.2
+1,Hibernating,224,501.1,1.2,64.4,0.4

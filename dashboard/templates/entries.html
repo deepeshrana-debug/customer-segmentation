@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!--
+  "Past entries" page.
+
+  Shows every set of numbers the owner has saved, newest first. Each row can be
+  opened (to see its cards and charts again) or deleted.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Past entries - Customer Segmentation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="site-header">
+      <div class="header-top">
+        <div class="titles">
+          <p class="eyebrow">Saved numbers</p>
+          <h1>Past entries</h1>
+          <p class="subtitle">Every set of numbers you have saved, newest first.</p>
+        </div>
+
+        <div class="header-controls">
+          <a class="nav-link" href="{{ url_for('enter_numbers') }}">Enter new numbers</a>
+          <a class="nav-link" href="{{ url_for('index') }}">View the results</a>
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+            <span class="theme-icon" aria-hidden="true"></span>
+            <span id="theme-label">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2 class="card-title">Your saved entries</h2>
+
+      {% if entries %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Saved</th>
+              {% for key, label, hint in fields %}
+              <th scope="col" class="num">{{ label }}</th>
+              {% endfor %}
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+            <tr>
+              <td>{{ entry['saved_at'] }}</td>
+              {% for key, label, hint in fields %}
+              <td class="num">{{ "{:,}".format(entry[key]) }}</td>
+              {% endfor %}
+              <td>
+                <div class="row-actions">
+                  <a class="btn btn-small" href="{{ url_for('open_entry', entry_id=entry['id']) }}">
+                    Open
+                  </a>
+                  <form method="post"
+                        action="{{ url_for('delete_entry', entry_id=entry['id']) }}"
+                        onsubmit="return confirm('Delete this entry? This cannot be undone.');">
+                    <button type="submit" class="btn btn-small btn-ghost">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty-note">
+        Nothing saved yet. <a href="{{ url_for('enter_numbers') }}">Enter your numbers</a>
+        and press Save.
+      </p>
+      {% endif %}
+    </section>
+
+    <footer class="site-footer">
+      Data is saved on this computer only.
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>
